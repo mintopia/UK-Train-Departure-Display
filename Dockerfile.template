@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install resin-wifi-connect
-RUN curl https://api.github.com/repos/resin-io/resin-wifi-connect/releases/latest -s \
+RUN curl https://api.github.com/repos/balena-io/wifi-connect/releases/latest -s \
     | grep -hoP 'browser_download_url": "\K.*%%RESIN_ARCH%%\.tar\.gz' \
     | xargs -n1 curl -Ls \
     | tar -xvz -C /usr/src/app/
