@@ -23,25 +23,23 @@ ip route | grep default
 # iwgetid -r
 
 if [ $? -eq 0 ]; then
-    printf 'Skipping WiFi Connect\n'
+    echo 'Skipping WiFi Connect\n'
 else
-    printf 'Starting WiFi Connect\n'
+    echo 'Starting WiFi Connect\n'
     ./wifi-connect
 fi
 
 cp config.sample.json config.json
-jq .journey.departureStation=\""${departureStation}"\" config.json | sponge config.json
-jq .journey.destinationStation=\""${destinationStation}"\" config.json | sponge config.json
-jq .journey.outOfHoursName=\""${outOfHoursName}"\" config.json | sponge config.json
-jq .refreshTime="${refreshTime}" config.json | sponge config.json
-jq .transportApi.appId=\""${transportApi_appId}"\" config.json | sponge config.json
-jq .transportApi.apiKey=\""${transportApi_apiKey}"\" config.json | sponge config.json
-jq .transportApi.operatingHours=\""${transportApi_operatingHours}"\" config.json | sponge config.json
+jq .journey.departureStation=\""${departureStation}"\" config.sample.json | sponge config.json
+jq .journey.destinationStation=\""${destinationStation}"\" config.sample.json | sponge config.json
+jq .journey.outOfHoursName=\""${outOfHoursName}"\" config.sample.json | sponge config.json
+jq .refreshTime="${refreshTime}" config.sample.json | sponge config.json
+jq .transportApi.appId=\""${transportApi_appId}"\" config.sample.json | sponge config.json
+jq .transportApi.apiKey=\""${transportApi_apiKey}"\" config.sample.json | sponge config.json
+jq .transportApi.operatingHours=\""${transportApi_operatingHours}"\" config.sample.json | sponge config.json
 
-printf 'Config:'
+echo 'Config:'
 cat config.json
 
-sleep 60
-
-printf 'Starting App'
+echo 'Starting App'
 python ./src/main.py
