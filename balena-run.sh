@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket
+#export DBUS_SYSTEM_BUS_ADDRESS=unix:path=/host/run/dbus/system_bus_socket
 
 # Optional step - it takes couple of seconds (or longer) to establish a WiFi connection
 # sometimes. In this case, following checks will fail and wifi-connect
@@ -14,13 +14,13 @@ sleep 15
 # ip route | grep default
 
 # 2. Is there Internet connectivity?
-# nmcli -t g | grep full
+nmcli -t g | grep full
 
 # 3. Is there Internet connectivity via a google ping?
 # wget --spider http://google.com 2>&1
 
 # 4. Is there an active WiFi connection?
-iwgetid -r
+# iwgetid -r
 
 if [ $? -eq 0 ]; then
     printf 'Skipping WiFi Connect\n'
