@@ -41,5 +41,7 @@ jq .transportApi.operatingHours=\""${transportApi_operatingHours}"\" config.json
 printf 'Config:'
 cat config.json
 
+sleep 60
+
 printf 'Starting App'
 python ./src/main.py
