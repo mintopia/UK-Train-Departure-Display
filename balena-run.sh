@@ -35,6 +35,7 @@ jq .journey.destinationStation=\""${destinationStation}"\" config.json | sponge 
 jq .journey.outOfHoursName=\""${outOfHoursName}"\" config.json | sponge config.json
 jq .refreshTime="${refreshTime}" config.json | sponge config.json
 jq .fps="${fps}" config.json | sponge config.json
+jq .contrast="${contrast}" config.json | sponge config.json
 jq .transportApi.appId=\""${transportApi_appId}"\" config.json | sponge config.json
 jq .transportApi.apiKey=\""${transportApi_apiKey}"\" config.json | sponge config.json
 jq .transportApi.operatingHours=\""${transportApi_operatingHours}"\" config.json | sponge config.json

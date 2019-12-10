@@ -266,6 +266,7 @@ try:
     fontBoldTall = makeFont("Dot Matrix Bold Tall.ttf", 10)
     fontBoldLarge = makeFont("Dot Matrix Bold.ttf", 20)
 
+    device.contrast(config["contrast"])
     widgetWidth = 256
     widgetHeight = 64
 
