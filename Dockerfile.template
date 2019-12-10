@@ -14,10 +14,6 @@ WORKDIR /usr/app
 COPY ./requirements.txt .
 RUN pip install -r requirements.txt --index-url=https://www.piwheels.org/simple
 
-COPY src ./src
-COPY balena-run.sh ./
-COPY config.sample.json ./
-
 ENV DEVICE_TYPE=%%RESIN_MACHINE_NAME%%
 
 # Install resin-wifi-connect
@@ -26,7 +22,9 @@ RUN curl https://api.github.com/repos/balena-io/wifi-connect/releases/latest -s 
     | xargs -n1 curl -Ls \
     | tar -xvz -C ./
 
-
+COPY config.sample.json ./
+COPY balena-run.sh ./
 RUN chmod +x balena-run.sh
+COPY src ./src
 
 CMD ./balena-run.sh

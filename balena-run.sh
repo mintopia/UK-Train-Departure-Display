@@ -30,15 +30,17 @@ else
 fi
 
 cp config.sample.json config.json
-jq .journey.departureStation=\""${departureStation}"\" config.json | sponge config.json
-jq .journey.destinationStation=\""${destinationStation}"\" config.json | sponge config.json
-jq .journey.outOfHoursName=\""${outOfHoursName}"\" config.json | sponge config.json
-jq .refreshTime="${refreshTime}" config.json | sponge config.json
-jq .fps="${fps}" config.json | sponge config.json
-jq .contrast="${contrast}" config.json | sponge config.json
-jq .transportApi.appId=\""${transportApi_appId}"\" config.json | sponge config.json
-jq .transportApi.apiKey=\""${transportApi_apiKey}"\" config.json | sponge config.json
-jq .transportApi.operatingHours=\""${transportApi_operatingHours}"\" config.json | sponge config.json
+jq .journey.departureStation=\""${departure:=STP}"\" config.json | sponge config.json
+jq .journey.destinationStation=\""${destination:=}"\" config.json | sponge config.json
+jq .journey.platform=\""${platform:=}"\" config.json | sponge config.json
+jq .refreshTime="${refreshTime:=120}" config.json | sponge config.json
+jq .fps="${fps:=10}" config.json | sponge config.json
+jq .brightness="${brightness:=255}" config.json | sponge config.json
+jq .powersaving.brightness="${powersavingBrightness:=25}" config.json | sponge config.json
+jq .powersaving.start="${powersavingStart:=0}" config.json | sponge config.json
+jq .powersaving.end="${powersavingEnd:=6}" config.json | sponge config.json
+jq .api.username=\""${apiUsername}"\" config.json | sponge config.json
+jq .api.password=\""${apiPassword}"\" config.json | sponge config.json
 
 echo 'Config:'
 cat config.json

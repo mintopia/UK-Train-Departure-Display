@@ -35,8 +35,8 @@ def makeFont(name, size):
 
 
 def renderDestination(departure, font):
-    departureTime = departure["aimed_departure_time"]
-    destinationName = departure["destination_name"]
+    departureTime = departure["locationDetail"]["gbttBookedDeparture"][:2] + ':' + departure["locationDetail"]["gbttBookedDeparture"][2:]
+    destinationName = departure["locationDetail"]["destination"][0]["abbrDescription"]
 
     def drawText(draw, width, height):
         train = f"{departureTime}  {destinationName}"
@@ -47,16 +47,18 @@ def renderDestination(departure, font):
 
 def renderServiceStatus(departure):
     def drawText(draw, width, height):
+        location = departure["locationDetail"]
         train = ""
 
-        if departure["status"] == "CANCELLED":
+        if "cancelReasonCode" in location:
             train = "Cancelled"
-        else:
-            if isinstance(departure["expected_departure_time"], str):
-                train = 'Exp '+departure["expected_departure_time"]
-
-            if departure["aimed_departure_time"] == departure["expected_departure_time"]:
+        elif "realtimeDeparture" in location:
+            if location["gbttBookedDeparture"] == location["realtimeDeparture"]:
                 train = "On time"
+            else:
+                train = 'Exp ' + location["realtimeDeparture"][:2] + ':' + location["realtimeDeparture"][2:]
+        else:
+            train = "On time"
 
         w, h = draw.textsize(train, font)
         draw.text((width-w,0), text=train, font=font, fill="yellow")
@@ -65,11 +67,11 @@ def renderServiceStatus(departure):
 
 def renderPlatform(departure):
     def drawText(draw, width, height):
-        if departure["mode"] == "bus":
+        if departure["serviceType"] == "bus":
             draw.text((0, 0), text="BUS", font=font, fill="yellow")
         else:
-            if isinstance(departure["platform"], str):
-                draw.text((0, 0), text="Plat "+departure["platform"], font=font, fill="yellow")
+            if isinstance(departure["locationDetail"]["platform"], str):
+                draw.text((0, 0), text="Plat "+departure["locationDetail"]["platform"], font=font, fill="yellow")
     return drawText
 
 
@@ -85,8 +87,14 @@ def renderStations(stations):
         if(len(stations) == stationRenderCount - 5):
             stationRenderCount = 0
 
+        w, h = draw.textsize(stations, font)
+        if w < width / 2:
+            stationText = stations
+        else:
+            stationText = stations[stationRenderCount:]
+        
         draw.text(
-            (0, 0), text=stations[stationRenderCount:], width=width, font=font, fill="yellow")
+            (0, 0), text=stationText, width=width, font=font, fill="yellow")
 
         if stationRenderCount == 0 and pauseCount < 8:
             pauseCount += 1
@@ -132,18 +140,20 @@ def renderDots(draw, width, height):
 
 
 def loadData(apiConfig, journeyConfig):
-    runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if isRun(runHours[0], runHours[1]) == False:
-        return False, False, journeyConfig['outOfHoursName']
-
     departures, stationName = loadDeparturesForStation(
-        journeyConfig, apiConfig["appId"], apiConfig["apiKey"])
+        apiConfig["username"],
+        apiConfig["password"],
+        journeyConfig
+    )
 
     if len(departures) == 0:
         return False, False, stationName
 
     firstDepartureDestinations = loadDestinationsForDeparture(
-        journeyConfig, departures[0]["service_timetable"]["id"])
+        apiConfig["username"],
+        apiConfig["password"],
+        journeyConfig,
+        departures[0])
 
     return departures, firstDepartureDestinations, stationName
 
@@ -255,6 +265,25 @@ def drawSignage(device, width, height, data):
 
     return virtualViewport
 
+def updatePowerSaving(device, config):
+    hour = datetime.now().hour
+    powerSaving = False
+    if config['powersaving']['start'] <= config['powersaving']['end']:
+        # Check we are >= start and <= end
+        if config['powersaving']['start'] <= hour < config['powersaving']['end']:
+            powerSaving = True
+    else:
+        if hour >= config['powersaving']['start']:
+            powerSaving = True
+        elif hour < config['powersaving']['end']:
+            powerSaving = True
+    
+    if powerSaving:
+        device.contrast(config['powersaving']['brightness'])
+    else:
+        device.contrast(config["brightness"])
+
+
 
 try:
     config = loadConfig()
@@ -266,7 +295,6 @@ try:
     fontBoldTall = makeFont("Dot Matrix Bold Tall.ttf", 10)
     fontBoldLarge = makeFont("Dot Matrix Bold.ttf", 20)
 
-    device.contrast(config["contrast"])
     widgetWidth = 256
     widgetHeight = 64
 
@@ -276,7 +304,9 @@ try:
 
     regulator = framerate_regulator(fps=config["fps"])
 
-    data = loadData(config["transportApi"], config["journey"])
+    updatePowerSaving(device, config)
+
+    data = loadData(config["api"], config["journey"])
     if data[0] == False:
         virtual = drawBlankSignage(
             device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
@@ -286,11 +316,12 @@ try:
 
     timeAtStart = time.time()
     timeNow = time.time()
+    psTime = time.time()
 
     while True:
         with regulator:
             if(timeNow - timeAtStart >= config["refreshTime"]):
-                data = loadData(config["transportApi"], config["journey"])
+                data = loadData(config["api"], config["journey"])
                 if data[0] == False:
                     virtual = drawBlankSignage(
                         device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
@@ -299,6 +330,10 @@ try:
                                           height=widgetHeight, data=data)
 
                 timeAtStart = time.time()
+            
+            if (timeNow - psTime >= 60):
+                updatePowerSaving(device, config)
+                psTime = time.time()
 
             timeNow = time.time()
             virtual.refresh()

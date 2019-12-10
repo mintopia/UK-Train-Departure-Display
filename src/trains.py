@@ -1,6 +1,7 @@
 import os
 import requests
 import json
+from pprint import pprint
 
 def abbrStation(journeyConfig, inputStr):
     dict = journeyConfig['stationAbbr']
@@ -8,40 +9,53 @@ def abbrStation(journeyConfig, inputStr):
         inputStr = inputStr.replace(key, dict[key])
     return inputStr
 
-def loadDeparturesForStation(journeyConfig, appId, apiKey):
-    if journeyConfig["departureStation"] == "":
+def loadDeparturesForStation(username, password, journeyConfig):
+    if journeyConfig['departureStation'] == "":
         raise ValueError(
             "Please set the journey.departureStation property in config.json")
 
-    if appId == "" or apiKey == "":
+    if username == "" or password == "":
         raise ValueError(
-            "Please complete the transportApi section of your config.json file")
+            "Please complete the API section of your config.json file")
 
-    departureStation = journeyConfig["departureStation"]
+    departureStation = journeyConfig['departureStation']
+    destinationStation = journeyConfig['destinationStation']
+    platform = journeyConfig['platform']
 
-    URL = f"http://transportapi.com/v3/uk/train/station/{departureStation}/live.json"
-
-    PARAMS = {'app_id': appId,
-              'app_key': apiKey,
-              'calling_at': journeyConfig["destinationStation"]}
-
-    r = requests.get(url=URL, params=PARAMS)
+    URL = f"https://api.rtt.io/api/v1/json/search/{departureStation}"
+    if destinationStation:
+        URL += f"/to/{destinationStation}"
+    
+    r = requests.get(url=URL, auth=(username, password))
 
     data = r.json()
     #apply abbreviations / replacements to station names (long stations names dont look great on layout)
     #see config file for replacement list
-    for item in data["departures"]["all"]:
-         item['origin_name'] = abbrStation(journeyConfig, item['origin_name'])
-         item['destination_name'] = abbrStation(journeyConfig, item['destination_name'])
+
+    services = []
+    if not data["services"]:
+        return [], data["location"]["name"]
+
+    for item in data["services"]:
+        if platform and (not "platform" in item["locationDetail"] or item["locationDetail"]["platform"] != platform):
+                continue
+        item["locationDetail"]["origin"][0]["abbrDescription"] = abbrStation(journeyConfig, item["locationDetail"]["origin"][0]["description"])
+        item["locationDetail"]["destination"][0]["abbrDescription"] = abbrStation(journeyConfig, item["locationDetail"]["destination"][0]["description"])
+        services.append(item)
+        if len(services) == 3:
+            break
 
     if "error" in data:
         raise ValueError(data["error"])
 
-    return data["departures"]["all"], data["station_name"]
+    return services, data["location"]["name"]
 
 
-def loadDestinationsForDeparture(journeyConfig, timetableUrl):
-    r = requests.get(url=timetableUrl)
+def loadDestinationsForDeparture(username, password, journeyConfig, serviceData):
+    uid = serviceData["serviceUid"]
+    date = serviceData["runDate"].replace("-", "/")
+    url = f"https://api.rtt.io/api/v1/json/service/{uid}/{date}"
+    r = requests.get(url=url, auth=(username, password))
 
     data = r.json()
 
@@ -49,20 +63,20 @@ def loadDestinationsForDeparture(journeyConfig, timetableUrl):
     #see config file for replacement list
     foundDepartureStation = False
 
-    for item in list(data["stops"]):
-        if item['station_code'] == journeyConfig['departureStation']:
+    for item in list(data["locations"]):
+        if item['crs'] == journeyConfig['departureStation']:
             foundDepartureStation = True
 
         if foundDepartureStation == False:
-            data["stops"].remove(item)
+            data["locations"].remove(item)
             continue
 
-        item['station_name'] = abbrStation(journeyConfig, item['station_name'])
+        item["abbrDescription"] = abbrStation(journeyConfig, item["description"])
 
     if "error" in data:
         raise ValueError(data["error"])
 
-    departureDestinationList = list(map(lambda x: x["station_name"], data["stops"]))[1:]
+    departureDestinationList = list(map(lambda x: x["abbrDescription"], data["locations"]))[1:]
 
     if len(departureDestinationList) == 1:
         departureDestinationList[0] = departureDestinationList[0] + ' only.'
