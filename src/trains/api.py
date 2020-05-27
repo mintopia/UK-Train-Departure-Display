@@ -21,7 +21,11 @@ class Api:
 
     def get_state(self):
         departure = Config.get("settings.departure")
-        url = "https://ldb.prod.a51.li/boards/{0}?term=false&t={1}000&limit=0".format(departure, int(time.time()))
+        if Config.get("debug.url"):
+            url = Config.get("debug.url")
+        else:
+            url = "https://ldb.prod.a51.li/boards/{0}?term=false&t={1}000&limit=0".format(departure, int(time.time()))
+
         data = self.get_from_nrea(url)
 
         state = State()
@@ -48,6 +52,8 @@ class Api:
     
     def calls_at(self, lookup_data, departure, destination):
         destination_tiploc = self.crs_to_tiploc(lookup_data["tiploc"], destination)
+        if not departure["calling"]:
+            return False
         for station in departure["calling"]:
             if station["tpl"] == destination_tiploc:
                 return True

@@ -2,10 +2,12 @@ import math
 import time
 from datetime import datetime
 
+import trains.utils as utils
+
 from luma.core.virtual import hotspot, snapshot
 from PIL import Image, ImageDraw
 
-
+# A standard display clock
 class Clock(snapshot):
 
     def __init__(self, width, height, fonts, draw_fn=None, interval=1.0):
@@ -27,6 +29,7 @@ class Clock(snapshot):
         draw.text((margin, 0), text=hourmin, font=self.fonts["boldlarge"], fill="yellow")
         draw.text((margin + w1, 5), text=seconds, font=self.fonts["boldtall"], fill="yellow")
 
+# Static text that does not re-render unless asked for
 class StaticText(snapshot):
     renderedText = None
     text = None
@@ -52,11 +55,7 @@ class StaticText(snapshot):
         self.text_image = Image.new(self.mode, self.size)
 
         size = self.font.getsize(self.text)
-        xpos = 0
-        if self.align == "right":
-            xpos = max(self.width - size[0], 0)
-        elif self.align == "center":
-            xpos = max(math.floor((self.width - size[0])/2), 0)
+        xpos = utils.align(self.font, self.text, self.width, self.align)
 
         canvas = ImageDraw.Draw(self.text_image)
         canvas.text((xpos, 0), text=self.text, font=self.font, fill="yellow", align=self.align, spacing=self.spacing)
@@ -69,7 +68,192 @@ class StaticText(snapshot):
         self.renderedText = self.text
         image.paste(self.text_image, xy)
 
+# A message bar with an updating list of messages. Messages will scroll horizontally then
+# scroll up to transition
+class MessageBar(snapshot):
+    def __init__(self, width, height, font, mode, draw_fn=None, interval=1.0, messages=[], align="left", hold_time=4, minimum_time=20):
+        super(MessageBar, self).__init__(width, height, draw_fn, interval)
+        self.messages = messages
+        self.align = align
+        self.hold_time = 4
+        self.minimum_time = 20
+        self.font = font
+        self.debug = False
 
+        self.current_image = MessageBarText(self.mode, self.font, height, align=align)
+        self.next_image = MessageBarText(self.mode, self.font, height, scroll_in=True, align=align)
+
+        # Initial state is to transition between lines
+        self.reset()
+    
+    def reset(self):
+        self.pointer = 0
+        self.state = "transition"
+        self.transition_time = time.monotonic
+
+        next_message = ""
+        if self.messages:
+            next_message = self.messages[0]
+
+        self.current_image.update_text("")
+        self.next_image.update_text(next_message)
+    
+    def update_messages(self, messages=[]):
+        if messages == self.messages:
+            return
+        
+        self.messages = messages
+        self.reset()
+
+
+    def paste_into(self, image, xy):
+        # This is our canvas to render on to
+        im = Image.new(image.mode, self.size)
+
+        transition = False
+
+        # Handle vertical scroll
+        if self.state == "transition":
+            if not self.next_image.transition_complete():
+                self.next_image.scroll_up()
+            
+            if not self.current_image.transition_complete():
+                self.current_image.scroll_up()
+
+            if self.next_image.transition_complete() and self.current_image.transition_complete():
+                self.state = "holding"
+                self.transition_time = time.monotonic()
+                transition = True
+        
+        elif self.state == "holding":
+            if time.monotonic() > self.transition_time + self.hold_time:
+                self.state = "scrolling"
+                self.transition_time = time.monotonic()
+
+        elif self.state == "scrolling":
+            if not self.current_image.scrolling_complete():
+                self.current_image.scroll_left()
+            elif time.monotonic() > self.transition_time + self.hold_time:
+                self.transition_time = time.monotonic()
+                if len(self.messages) > 1:
+                    self.state = "transition"
+                else:
+                    self.current_image.scroll_x = 0
+                    self.state = "holding"
+            
+        # render our canvas onto the backing image
+        self.current_image.paste(im)
+        self.next_image.paste(im)
+
+        image.paste(im, xy)
+        del im
+
+        if transition:
+            self.transition()
+
+        self.last_updated = time.monotonic()
+    
+    def transition(self):
+        # Reset our scrolling
+        self.current_image.scroll_y = 0
+        self.current_image.scroll_x = 0
+        self.next_image.scroll_y = 0
+        self.next_image.scroll_x = 0
+
+        # Move the image and text
+        self.current_image.image = self.next_image.image
+        self.current_image.text = self.next_image.text
+
+        # Get our next message
+        self.pointer += 1
+        if self.pointer >= len(self.messages):
+            self.pointer = 0
+
+        if not self.messages:
+            message = ""
+        else:
+            message = self.messages[self.pointer]
+        
+        self.next_image.update_text(message)
+
+
+class MessageBarText:
+    def __init__(self, mode, font, height, scroll_in=False, text="", align="left"):
+        self.text = text
+        self.font = font
+        self.mode = mode
+        self.height = height
+        self.scroll_in = scroll_in
+        self.align = align
+        self.debug = False
+
+        self.scroll_y = 0
+        self.render()
+        
+    def render(self):
+        size = self.font.getsize(self.text)
+
+        self.image = Image.new(self.mode, (size[0], self.height))
+        canvas = ImageDraw.Draw(self.image)
+        canvas.text((0, 0), text=self.text, font=self.font, fill="yellow")
+
+        self.scroll_x = 0
+        self.scroll_y = 0
+    
+    def update_text(self, text):
+        if self.text == text:
+            return
+        
+        self.text = text
+        self.render()
+    
+    def scroll_up(self):
+        self.scroll_y += 1
+    
+    def scroll_left(self):
+        self.scroll_x += 1
+
+    def transition_complete(self):
+        return self.scroll_y == self.height
+    
+    def scrolling_complete(self):
+        return self.scroll_x == self.image.width
+    
+    def paste(self, destination):
+        destination_width = destination.size[0]
+
+        # Y scrolling
+        top = 0
+        bottom = 0
+        destination_y = 0
+        if self.scroll_in:
+            bottom = self.scroll_y
+            destination_y = self.height - bottom
+        else:
+            top = self.scroll_y
+            bottom = self.height
+
+        # X Scrolling
+        left = 0
+        destination_x = 0
+        if self.image.width > destination_width:
+            # We need to scroll
+            left = self.scroll_x
+        else:
+            # We don't need to scroll - we might need to align
+            destination_x = utils.align(self.font, self.text, destination_width, self.align)
+        
+        right = left + destination_width
+        right = max(right, self.image.width)
+
+        # Nothing to render
+        if top == bottom or left == right:
+            return
+
+        crop = self.image.crop((left, top, right, bottom))
+        return destination.paste(crop, (destination_x, destination_y))
+
+# Horizontally scrolling text
 class ScrollingText(snapshot):
     xpos = 0
     text = None

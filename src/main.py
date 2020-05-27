@@ -18,6 +18,8 @@ regulator = framerate_regulator(fps=framerate)
 timer = None
 
 def update_from_api():
+    if not frequency:
+        return
     print("Updating from API")
     timestamp = datetime.now()
     state = api.get_cached_state(timestamp, frequency)

@@ -4,20 +4,13 @@ from PIL import ImageFont
 from trains.config import Config
 from trains.elements import *
 from trains.scenes import *
+import trains.utils as utils
 
 from luma.core.interface.serial import spi
 from luma.core.device import dummy
 from luma.core.render import canvas
 from luma.oled.device import ssd1322
 from luma.core.virtual import viewport, snapshot, hotspot
-
-try:
-    import cv2
-    import numpy
-except ImportError:
-    if Config.get("debug.dummy", False):
-        print("Unable to load CV2 or numpy. Dummy mode will not render.")
-    pass
 
 class Board:
     hotspots = {}
@@ -109,9 +102,5 @@ class Board:
     def show_image(self):
         if not Config.get("debug.dummy", False):
             return
-
-        if numpy and cv2:
-            np_image = cv2.cvtColor(numpy.array(self.device.image.convert('RGB')), cv2.COLOR_RGB2BGR)
-            np_image = cv2.resize(np_image, None, fx = 2, fy = 2, interpolation = cv2.INTER_AREA)
-            cv2.imshow('image', np_image)
-            cv2.waitKey(1)
+        
+        utils.display_image("Departure Board", self.device.image)

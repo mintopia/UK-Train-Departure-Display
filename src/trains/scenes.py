@@ -48,6 +48,16 @@ class Scene:
         hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.02)
         return self.add_element(code, hotspot, location, visible)
     
+    def add_messagebar(self, code, width=256, height=12, font=None, location=(0, 0), align="left", messages=[], visible=True, hold_time=4, minimum_time=20):
+        if not font:
+            font = self.board.fonts["regular"]
+        
+        if code in self.elements:
+            raise RuntimeError("The code has already been added")
+
+        hotspot = elements.MessageBar(width, height, font, self.board.device.mode, interval=0.02, messages=messages, hold_time=hold_time, minimum_time=minimum_time, align=align)
+        return self.add_element(code, hotspot, location, visible)
+    
     def add_element(self, code, hotspot, location=(0,0), visible=True):
         element = SceneElement(code, hotspot, location, visible)
         self.elements[code] = element
@@ -162,29 +172,34 @@ class NoServices(Scene):
 class DepartureBoard(Scene):
     def setup(self):
         self.row1 = DepartureBoardRow(self, "row1", True)
-        self.row3 = DepartureBoardRow(self, "row3", ypos=24)
         self.row4 = DepartureBoardRow(self, "row4", ypos=36)
-        self.calling_label = self.add_text("calling_label", text="Calling at:", width=40, location=(0, 12))
+        self.calling_label = self.add_messagebar("calling_label", messages=["Calling at:"], width=40, location=(0, 12))
+        self.calling_at = self.add_messagebar("calling_at", width=214, location=(42, 12), hold_time=3)
+        self.messages = self.add_messagebar("message", location=(0, 24), minimum_time=10)
 
-        calling_at = elements.ScrollingText(214, 12, self.board.device.mode, self.board.fonts["regular"], interval=0.02, pause=80)
-        self.calling_at = self.add_element("calling_at", calling_at, location=(42, 12))
+        self.calling_at.hotspot.debug = True
+        self.calling_at.hotspot.next_image.debug = True
+        self.calling_at.hotspot.current_image.debug = True
 
     def update_state(self, state):
-        final = len(state.departures) - 1
-        departures = []
-        for i in range(3):
-            departure = None
-            if i <= final:
-                departure = state.departures[i]
-            departures.append(departure)
-        
-        self.row1.update(1, departures[0])
-        self.row3.update(2, departures[1])
-        self.row4.update(3, departures[2])
+        self.row1.update(1, state.departures[0:1])
+        self.row4.update(2, state.departures[1:4])
+
+        first = state.departures[0]
+
+        service = "{0} service".format(first.toc_name)
+        if first.length:
+            service += " formed of {0} coach".format(first.length)
+            if first.length != 1:
+                service += "es"
+        messages = [
+            service
+        ]
+        self.messages.hotspot.update_messages(messages)
 
         showtimes = Config.get("settings.layout.callingtimes", False)
         stops = []
-        for stop in departures[0].stops:
+        for stop in first.stops:
             location = stop.location.get_abbr_name()
             if showtimes:
                 location += " ({0})".format(stop.time)
@@ -198,7 +213,7 @@ class DepartureBoard(Scene):
                 calling_at += " and "
             calling_at += last
 
-        self.calling_at.hotspot.update_text(calling_at)
+        self.calling_at.hotspot.update_messages([calling_at])
 
 class DepartureBoardRow:
     order = None
@@ -210,46 +225,47 @@ class DepartureBoardRow:
     def __init__(self, scene, code, title=False, ypos=0):
         self.code = code
         self.scene = scene
+        self.data = None
 
-        primary_font = self.scene.board.fonts["regular"]
-        secondary_font = self.scene.board.fonts["regular"]
-        if title:
-            primary_font = self.scene.board.fonts["bold"]
+        font = self.scene.board.fonts["regular"]
+        minimum_time = 10
 
-        xoffset = 0
-        destinationwidth = 176
-
-        if Config.get("settings.layout.order", False):
-            xoffset += 25
-            destinationwidth -= 25
-            self.order = self.scene.add_text("{0}-order".format(code), width=25, location=(0, ypos), font=primary_font)
-
-        if Config.get("settings.layout.platform", False):
-            destinationwidth -= 29
-            self.platform = self.scene.add_text("{0}-platform".format(code), width=27, location=(185, ypos), font=secondary_font)
+        self.order = self.scene.add_messagebar("{0}-order".format(code), width=20, location=(0, ypos), minimum_time=minimum_time)
+        self.time = self.scene.add_messagebar("{0}-time".format(code), width=28, location=(20, ypos), align="center", minimum_time=minimum_time)
+        self.platform = self.scene.add_messagebar("{0}-platform".format(code), width=16, location=(48, ypos), align="center", minimum_time=minimum_time)
         
-        self.time = self.scene.add_text("{0}-time".format(code), width=34, location=(xoffset, ypos), font=primary_font)
-        self.destination = self.scene.add_text("{0}-destination".format(code), width=destinationwidth, location=(xoffset + 34, ypos), font=primary_font)
-        self.status = self.scene.add_text("{0}-status".format(code), width=40, location=(216, ypos), font=secondary_font, align="right")
+        self.destination = self.scene.add_messagebar("{0}-destination".format(code), width=149, location=(67, ypos), minimum_time=minimum_time)
+        self.status = self.scene.add_messagebar("{0}-status".format(code), width=40, location=(216, ypos),align="right", minimum_time=minimum_time)
     
-    def update(self, order, data):
+    def update(self, starting_order, data):
+        if data == self.data:
+            return
+        
         if not data:
-            self.time.hotspot.update_text("")
-            self.destination.hotspot.update_text("")
-            self.status.hotspot.update_text("")
-            if self.platform:
-                self.platform.hotspot.update_text("")
-            if self.order:
-                self.order.hotspot.update_text("")
+            self.time.hotspot.update_messages()
+            self.destination.hotspot.update_messages()
+            self.status.hotspot.update_messages()
+            self.platform.hotspot.update_messages()
+            self.order.hotspot.update_messages()
             return
 
-        self.time.hotspot.update_text(data.scheduled)
-        self.destination.hotspot.update_text(data.destination.get_abbr_name())
-        self.status.hotspot.update_text(data.get_status_string())
-        if self.platform:
-            platform = ""
-            if data.platform:
-                platform = "Plat {0}".format(data.platform)
-            self.platform.hotspot.update_text(platform)
-        if self.order:
-            self.order.hotspot.update_text(ordinal(order))
+        order = []
+        scheduled = []
+        platform = []
+        destination = []
+        status = []
+        
+        for departure in data:
+            order.append(ordinal(starting_order))
+            scheduled.append(departure.scheduled)
+            platform.append(departure.platform)
+            destination.append(departure.destination.get_abbr_name())
+            status.append(departure.get_status_string())
+
+            starting_order += 1
+
+        self.order.hotspot.update_messages(order)
+        self.time.hotspot.update_messages(scheduled)
+        self.platform.hotspot.update_messages(platform)
+        self.destination.hotspot.update_messages(destination)
+        self.status.hotspot.update_messages(status)
