@@ -8,7 +8,8 @@ RUN install_packages \
         libjpeg-dev \
         libtiff5 \
         dnsmasq \
-        wireless-tools
+        wireless-tools \
+        libxcb 
 
 WORKDIR /usr/app
 COPY ./requirements.txt .
