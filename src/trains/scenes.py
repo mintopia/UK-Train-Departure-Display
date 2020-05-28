@@ -48,14 +48,14 @@ class Scene:
         hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.02)
         return self.add_element(code, hotspot, location, visible)
     
-    def add_messagebar(self, code, width=256, height=12, font=None, location=(0, 0), align="left", messages=[], visible=True, hold_time=4, minimum_time=20):
+    def add_scrolling_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True):
         if not font:
             font = self.board.fonts["regular"]
         
         if code in self.elements:
             raise RuntimeError("The code has already been added")
 
-        hotspot = elements.MessageBar(width, height, font, self.board.device.mode, interval=0.02, messages=messages, hold_time=hold_time, minimum_time=minimum_time, align=align)
+        hotspot = elements.ScrollingText(width, height, font, self.board.device.mode, interval=0.02, text=text, align=align)
         return self.add_element(code, hotspot, location, visible)
     
     def add_element(self, code, hotspot, location=(0,0), visible=True):
@@ -108,8 +108,8 @@ class NoServices(Scene):
         self.services_element = self.add_text("noservices", text=self.text, align="center", location=(0, 22))
     
     def update_state(self, state):
-        self.elements["title"].hotspot.update_text(state.name)
-        self.update_messages(state.messages)
+        self.elements["title"].hotspot.update_text(state["name"])
+        self.update_messages(state["messages"])
     
     def update_messages(self, messages):
         if self.messages == messages:
@@ -170,102 +170,64 @@ class NoServices(Scene):
         self.message_transition = timestamp + timedelta(seconds=interval)
  
 class DepartureBoard(Scene):
+    state = None
+        
     def setup(self):
-        self.row1 = DepartureBoardRow(self, "row1", True)
-        self.row4 = DepartureBoardRow(self, "row4", ypos=36)
-        self.calling_label = self.add_messagebar("calling_label", messages=["Calling at:"], width=40, location=(0, 12))
-        self.calling_at = self.add_messagebar("calling_at", width=214, location=(42, 12), hold_time=3)
-        self.messages = self.add_messagebar("message", location=(0, 24), minimum_time=10)
+        # Next Service
+        next_service = elements.NextService(self.board.fonts["regular"], self.board.device.mode)
+        self.next_service = self.add_element("next_service", next_service, (0, 0)) 
 
-        self.calling_at.hotspot.debug = True
-        self.calling_at.hotspot.next_image.debug = True
-        self.calling_at.hotspot.current_image.debug = True
+        # Calling At
+        self.calling_at_label = self.add_scrolling_text("calling_at_label", width=42, location=(0, 12), text="Calling at:")
+        self.calling_at = self.add_scrolling_text("calling_at", width=214, location=(42, 12))
+
+        # Info Line
+        self.service_info = self.add_scrolling_text("service_info", location=(0,24))
+        
+        # Remaining Services
+        remaining = elements.RemainingServices(self.board.fonts["regular"], self.board.device.mode)
+        self.remaining = self.add_element("remaining", remaining, (0, 36))
 
     def update_state(self, state):
-        self.row1.update(1, state.departures[0:1])
-        self.row4.update(2, state.departures[1:4])
-
-        first = state.departures[0]
-
-        service = "{0} service".format(first.toc_name)
-        if first.length:
-            service += " formed of {0} coach".format(first.length)
-            if first.length != 1:
-                service += "es"
-        messages = [
-            service
-        ]
-        self.messages.hotspot.update_messages(messages)
-
-        showtimes = Config.get("settings.layout.callingtimes", False)
-        stops = []
-        for stop in first.stops:
-            location = stop.location.get_abbr_name()
-            if showtimes:
-                location += " ({0})".format(stop.time)
-            stops.append(location)
+        if self.state == state:
+            return
         
-        calling_at = ""
-        if stops:
-            last = stops.pop()
-            calling_at = ", ".join(stops)
-            if calling_at:
-                calling_at += " and "
-            calling_at += last
+        self.state = state
 
-        self.calling_at.hotspot.update_messages([calling_at])
+        first = state["departures"][:1].pop()
+        remaining = state["departures"][1:5]
 
-class DepartureBoardRow:
-    order = None
-    time = None
-    destination = None
-    platform = None
-    status = None
+        self.next_service.hotspot.update_data(first)
 
-    def __init__(self, scene, code, title=False, ypos=0):
-        self.code = code
-        self.scene = scene
-        self.data = None
+        calling_at = self.get_calling_at(first["stops"])
+        self.calling_at.hotspot.update_text(calling_at)
 
-        font = self.scene.board.fonts["regular"]
-        minimum_time = 10
-
-        self.order = self.scene.add_messagebar("{0}-order".format(code), width=20, location=(0, ypos), minimum_time=minimum_time)
-        self.time = self.scene.add_messagebar("{0}-time".format(code), width=28, location=(20, ypos), align="center", minimum_time=minimum_time)
-        self.platform = self.scene.add_messagebar("{0}-platform".format(code), width=16, location=(48, ypos), align="center", minimum_time=minimum_time)
+        self.service_info.hotspot.update_text(self.get_service_info(first))
         
-        self.destination = self.scene.add_messagebar("{0}-destination".format(code), width=149, location=(67, ypos), minimum_time=minimum_time)
-        self.status = self.scene.add_messagebar("{0}-status".format(code), width=40, location=(216, ypos),align="right", minimum_time=minimum_time)
+        self.remaining.hotspot.update_data(remaining)
     
-    def update(self, starting_order, data):
-        if data == self.data:
-            return
+    def get_calling_at(self, stops):
+        showtimes = Config.get("settings.layout.times", False)
+        stations = []
+        for stop in stops:
+            text = stop["location"]["abbr_name"]
+            if showtimes:
+                text += " ({0})".format(stop["time"])
+            stations.append(text)
         
-        if not data:
-            self.time.hotspot.update_messages()
-            self.destination.hotspot.update_messages()
-            self.status.hotspot.update_messages()
-            self.platform.hotspot.update_messages()
-            self.order.hotspot.update_messages()
-            return
-
-        order = []
-        scheduled = []
-        platform = []
-        destination = []
-        status = []
+        last = stations.pop()
+        calling_at = last
+        if stations:
+            calling_at = ", ".join(stations) + " and " + calling_at
         
-        for departure in data:
-            order.append(ordinal(starting_order))
-            scheduled.append(departure.scheduled)
-            platform.append(departure.platform)
-            destination.append(departure.destination.get_abbr_name())
-            status.append(departure.get_status_string())
-
-            starting_order += 1
-
-        self.order.hotspot.update_messages(order)
-        self.time.hotspot.update_messages(scheduled)
-        self.platform.hotspot.update_messages(platform)
-        self.destination.hotspot.update_messages(destination)
-        self.status.hotspot.update_messages(status)
+        return calling_at
+    
+    def get_service_info(self, departure):
+        info = "{0} service".format(departure["toc_name"])
+        if departure["length"]:
+            plural = "es"
+            if departure["length"] == 1:
+                plural = ""
+            
+            info += " formed of {0} coach{1}".format(departure["length"], plural)
+        return info

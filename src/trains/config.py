@@ -1,21 +1,16 @@
 import json
 import pprint
 import os
+import requests
 
 class Config:
     instance = None
 
     def __init__(self):
-        filename = os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__),
-                '../'
-                'config.json'
-            )
-        )
-        print("Reading config from {0}".format(filename))
-        with open(filename, 'r') as jsonConfig:
-            self.config = json.load(jsonConfig)
+        uuid = os.environ['BALENA_DEVICE_UUID']
+        url = "http://192.168.30.187/config/{0}".format(uuid[:7])
+        response = requests.get(url)
+        self.config = response.json()
     
     def lookup(self, path):
         keys = path.split(".")

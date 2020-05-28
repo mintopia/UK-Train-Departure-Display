@@ -2,12 +2,15 @@ import sys
 from datetime import datetime
 import threading
 import time
+from pprint import pprint
 
 from luma.core.sprite_system import framerate_regulator
 
 from trains.api import Api
 from trains.board import Board
 from trains.config import Config
+
+from time import sleep
 
 board = Board()
 api = Api()
@@ -20,9 +23,8 @@ timer = None
 def update_from_api():
     if not frequency:
         return
-    print("Updating from API")
     timestamp = datetime.now()
-    state = api.get_cached_state(timestamp, frequency)
+    state = api.get_cached_state(timestamp, frequency, as_dict=True)
     board.update_state(state)
 
     global timer
@@ -30,6 +32,8 @@ def update_from_api():
     timer.start()
 
 update_from_api()
+
+sleep(2)
 
 try:
     while True:

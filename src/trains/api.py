@@ -1,6 +1,7 @@
 import time
 from datetime import datetime, timedelta
 from pprint import pprint
+import json
 
 import requests
 from bs4 import BeautifulSoup
@@ -11,15 +12,21 @@ from trains.data import *
 
 class Api:
     __state = None
+    __dict = None
     __timestamp = None
 
-    def get_cached_state(self, timestamp, frequency):
+    def get_cached_state(self, timestamp, frequency, as_dict=False):
         if not self.__state or timestamp >= self.__timestamp:
             self.__state = self.get_state()
+            self.__dict = json.loads(json.dumps(self.__state, default=lambda o: o.__dict__))
             self.__timestamp = timestamp + timedelta(seconds=frequency)
-        return self.__state
+        
+        if as_dict:
+            return self.__dict
+        else:
+            return self.__state
 
-    def get_state(self):
+    def get_state(self, as_dict=False):
         departure = Config.get("settings.departure")
         if Config.get("debug.url"):
             url = Config.get("debug.url")
@@ -33,7 +40,7 @@ class Api:
         self.parse_station(state, data)
         self.parse_messages(state, data)
         self.parse_departures(state, data)
-
+        
         return state
     
     def get_from_nrea(self, url):
@@ -63,6 +70,7 @@ class Api:
         destination = Config.get("settings.destination")
         platforms = Config.get("settings.platforms")
         limit = Config.get("settings.services", 3)
+        tocs = Config.get("settings.tocs")
         if data["departures"]:
             departures = sorted(data["departures"], key=lambda departure: departure["location"]["timetable"]["time"])
         else:
@@ -70,13 +78,20 @@ class Api:
 
         state.departures = []
         for departure in departures:
-            if destination and not self.calls_at(data, departure, destination):
-                continue
-
+            # Hide platforms we don't care about
             if platforms and departure["location"]["forecast"]["plat"]["plat"] not in platforms:
                 continue
 
+            # Hide specific tocs
+            if tocs and departure["toc"] not in tocs:
+                continue
+
+            # Hide Departed
             if "departed" in departure["location"]["forecast"] and departure["location"]["forecast"]["departed"]:
+                continue
+
+            # Hide ones that aren't calling at our destination
+            if destination and not self.calls_at(data, departure, destination):
                 continue
             
             state.departures.append(self.create_departure(data, departure))
@@ -94,14 +109,25 @@ class Api:
         departure.platform = data["location"]["forecast"]["plat"]["plat"]
         if "arrived" in data["location"]["forecast"]:
             departure.arrived = data["location"]["forecast"]["arrived"]
-        if "length" in data:
-            departure.length = int(departure["length"])
+        if "length" in data["location"]:
+            departure.length = int(data["location"]["length"])
 
         if departure.platform == "BUS":
             departure.bus = True
 
-        if data["cancelReason"]["reason"] != 0:
+        departure.cancelled = False
+        departure.cancel_reason = None
+        if "cancelled" in data["location"] and data["location"]["cancelled"]:
             departure.cancelled = True
+            cancel_reason = data["cancelReason"]["reason"]
+            if cancel_reason:
+                departure.cancel_reason = lookup_data["reasons"]["cancelled"][str(cancel_reason)]["reasontext"]
+        
+        departure.late_reason = None
+        late_reason = data["lateReason"]["reason"]
+        if late_reason:
+            lookup_data["reasons"]["late"]
+            departure.late_reason = lookup_data["reasons"]["late"][str(late_reason)]["reasontext"]
         
         departure.origin = self.get_location_from_tiploc(lookup_data, data["origin"]["tiploc"])
         departure.destination = self.get_location_from_tiploc(lookup_data, data["dest"]["tiploc"])
@@ -116,6 +142,8 @@ class Api:
                 stop.location = self.get_location_from_tiploc(lookup_data, calling["tpl"])
                 stop.time = calling["time"][:5]
                 departure.stops.append(stop)
+        
+        departure.status = departure.get_status_string()
 
         return departure
 
@@ -127,6 +155,7 @@ class Api:
         location.crs = data["crs"]
         location.toc = data["toc"]
         location.toc_name = lookup["toc"][location.toc]["tocname"]
+        location.abbr_name = location.get_abbr_name()
 
         return location
     

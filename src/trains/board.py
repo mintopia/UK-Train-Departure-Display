@@ -58,7 +58,6 @@ class Board:
                 font
             )
         )
-        print("Loading {0}".format(path))
         return ImageFont.truetype(path, size)
     
     def init_display(self):
@@ -85,7 +84,7 @@ class Board:
             self.__data = self.__newdata
             self.initialising.hide()
 
-            if len(self.__data.departures) == 0:
+            if len(self.__data["departures"]) == 0:
                 self.departureboard.hide()
                 self.noservices.update_state(self.__data)
                 self.noservices.show()
