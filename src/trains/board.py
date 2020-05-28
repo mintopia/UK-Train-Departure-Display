@@ -64,7 +64,7 @@ class Board:
         if Config.get("debug.dummy", False):
             self.device = dummy(width=256, height=64, rotate=0, mode="1")
         else:
-            serial = spi()
+            serial = spi(bus_speed_hz=32000000)
             self.device = ssd1322(serial, mode="1", rotate=0)
         
         self.device.clear()
