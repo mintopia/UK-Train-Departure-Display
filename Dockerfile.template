@@ -9,7 +9,7 @@ RUN install_packages \
         libtiff5 \
         dnsmasq \
         wireless-tools \
-        libxcb 
+        libxcb1
 
 WORKDIR /usr/app
 COPY ./requirements.txt .
