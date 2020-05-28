@@ -163,14 +163,14 @@ class ScrollingText(snapshot):
         
         if self.bottom < self.height:
             # Y Scroll
-            self.bottom += 1
-            self.ypos -= 1
+            self.bottom += 2
+            self.ypos -= 2
 
         elif self.text.width >= self.width:
             # Y scrolling
-            self.left += 1
+            self.left += 2
             if self.right < self.text.width:
-                self.right += 1
+                self.right += 2
 
             if self.right == self.left:
                 # Scroll finished
@@ -179,7 +179,7 @@ class ScrollingText(snapshot):
     
 class NextService(snapshot):
     def __init__(self, font, mode, data=None):
-        super(NextService, self).__init__(256, 12, None, 0.02)
+        super(NextService, self).__init__(256, 12, None, 0.08)
 
         self.font = font
         self.mode = mode
@@ -221,8 +221,8 @@ class NextService(snapshot):
 
             if self.bottom < self.height:
                 # Y Scroll
-                self.bottom += 1
-                self.ypos -= 1
+                self.bottom += 2
+                self.ypos -= 2
             else:
                 # Pause rendering for a minute
                 pause = 60
@@ -241,7 +241,7 @@ class NextService(snapshot):
 
 class RemainingServices(snapshot):
     def __init__(self, font, mode, data=None):
-        super(RemainingServices, self).__init__(256, 12, None, 0.02)
+        super(RemainingServices, self).__init__(256, 12, None, 0.08)
 
         self.font = font
         self.mode = mode
@@ -320,11 +320,11 @@ class RemainingServices(snapshot):
         
         if self.ypos > 0:
             # We're scrolling up our initial scroll
-            self.ypos -= 1
-            self.bottom += 1
+            self.ypos -= 2
+            self.bottom += 2
         else:
-            self.top += 1
-            self.bottom += 1
+            self.top += 2
+            self.bottom += 2
 
 
 def render_departure(canvas, font, order=1, departure=None, ypos=0):

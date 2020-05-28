@@ -45,7 +45,7 @@ class Scene:
         if code in self.elements:
             raise RuntimeError("The code has already been added")
         
-        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.02)
+        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.08)
         return self.add_element(code, hotspot, location, visible)
     
     def add_scrolling_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True):
@@ -55,7 +55,7 @@ class Scene:
         if code in self.elements:
             raise RuntimeError("The code has already been added")
 
-        hotspot = elements.ScrollingText(width, height, font, self.board.device.mode, interval=0.02, text=text, align=align)
+        hotspot = elements.ScrollingText(width, height, font, self.board.device.mode, interval=0.08, text=text, align=align)
         return self.add_element(code, hotspot, location, visible)
     
     def add_element(self, code, hotspot, location=(0,0), visible=True):
