@@ -130,7 +130,7 @@ class ScrollingText(snapshot):
         if self.text:
             im = Image.new(image.mode, self.size)
 
-            if self.ypos == 1:
+            if self.ypos <= 2 and self.ypos > 0:
                 if self.text.width <= self.width:
                     # Our text fits in the viewport and we've finished scrolling
                     # we don't need to update for a minute
@@ -139,7 +139,7 @@ class ScrollingText(snapshot):
                     # Our text doesn't fit, but we want to scroll left in 2 seconds
                     pause = 2
             
-            if self.left == self.right - 1:
+            if self.left >= (self.right - 1):
                 # We've finished scrolling left to right. We pause for 2 seconds
                 pause = 2
 
@@ -168,18 +168,18 @@ class ScrollingText(snapshot):
 
         elif self.text.width >= self.width:
             # Y scrolling
-            self.left += 2
+            self.left += 1
             if self.right < self.text.width:
-                self.right += 2
+                self.right += 1
 
-            if self.right == self.left:
+            if self.right <= self.left:
                 # Scroll finished
                 self.reset()
         return
     
 class NextService(snapshot):
     def __init__(self, font, mode, data=None):
-        super(NextService, self).__init__(256, 12, None, 0.08)
+        super(NextService, self).__init__(256, 12, None, 0.04)
 
         self.font = font
         self.mode = mode
@@ -241,7 +241,7 @@ class NextService(snapshot):
 
 class RemainingServices(snapshot):
     def __init__(self, font, mode, data=None):
-        super(RemainingServices, self).__init__(256, 12, None, 0.08)
+        super(RemainingServices, self).__init__(256, 12, None, 0.04)
 
         self.font = font
         self.mode = mode

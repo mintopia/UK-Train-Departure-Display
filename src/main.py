@@ -13,6 +13,8 @@ from trains.config import Config
 from time import sleep
 
 board = Board()
+board.departure_board()
+
 api = Api()
 debug = Config.get("debug.stats", False)
 
@@ -21,18 +23,19 @@ framerate = Config.get("debug.framerate", 0)
 regulator = framerate_regulator(fps=framerate)
 timer = None
 
-def update_from_api():
+def minute_timer():
     if not frequency:
         return
     timestamp = datetime.now()
     state = api.get_cached_state(timestamp, frequency, as_dict=True)
+    board.update_powersaving(timestamp)
     board.update_state(state)
 
     global timer
-    timer = threading.Timer(frequency + 1, update_from_api)
+    timer = threading.Timer(frequency + 1, minute_timer)
     timer.start()
 
-update_from_api()
+minute_timer()
 
 sleep(2)
 
