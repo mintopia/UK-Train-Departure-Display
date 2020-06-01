@@ -18,15 +18,15 @@ def wordwrap(font, width, input):
     while words:
         word = words.pop(0)
         newline = line + " " + word
-        if font.getsize(newline.strip())[0] > width:
+        if font.getsize_multiline(newline.strip())[0] > width:
             # Text is too wide, wrap
             if line:
                 # We have a full line
-                lines.append(line)
+                lines.append(line.strip())
                 line = word
             else:
                 # Line was empty, let's just overflow
-                lines.append(newline)
+                lines.append(newline.strip())
                 line = ""
         else:
             line = newline
@@ -43,7 +43,7 @@ def ordinal(number):
     return str(number) + suffix
 
 def align(font, text, width, align="center"):
-    text_width = font.getsize(text)[0]
+    text_width = font.getsize_multiline(text)[0]
     if align == "center":
         return max(math.floor((width - text_width) / 2), 0)
     elif align == "right":

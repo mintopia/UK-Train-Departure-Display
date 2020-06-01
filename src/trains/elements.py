@@ -1,6 +1,7 @@
 import math
 import time
 from datetime import datetime
+from pprint import pprint
 
 import trains.utils as utils
 from trains.config import Config
@@ -36,11 +37,12 @@ class StaticText(snapshot):
     align = "left"
     rendered = None
 
-    def __init__(self, width, height, font, mode, draw_fn=None, interval=1.0, text=None, align="left", spacing=2):
+    def __init__(self, width, height, font, mode, draw_fn=None, interval=1.0, text=None, align="left", spacing=2, vertical_align="top"):
         super(StaticText, self).__init__(width, height, draw_fn, interval)
 
         self.font = font
         self.align = align
+        self.vertical_align = vertical_align
         self.mode = mode
         self.spacing = spacing
         self.update_required = False
@@ -59,11 +61,22 @@ class StaticText(snapshot):
 
         self.text_image = Image.new(self.mode, self.size)
 
-        size = self.font.getsize(self.text)
-        xpos = utils.align(self.font, self.text, self.width, self.align)
+        size = self.font.getsize_multiline(self.text)
+
+        xpos = 0
+        if self.align == "right":
+            xpos = self.width - size[0]
+        elif self.align == "center":
+            xpos = math.floor((self.width - size[0]) / 2)
+        
+        ypos = 0
+        if self.vertical_align == "bottom":
+            ypos = self.height - size[1]
+        elif self.vertical_align == "middle":
+            ypos = math.floor((self.height - size[1]) / 2)
 
         canvas = ImageDraw.Draw(self.text_image)
-        canvas.text((xpos, 0), text=self.text, font=self.font, fill="yellow", align=self.align, spacing=self.spacing)
+        canvas.text((xpos, ypos), text=self.text, font=self.font, fill="yellow", align=self.align, spacing=self.spacing)
 
         self.rendered = time.monotonic()
 

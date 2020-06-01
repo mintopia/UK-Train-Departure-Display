@@ -38,14 +38,14 @@ class Scene:
         if state:
             self.update_state(state)
     
-    def add_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True):
+    def add_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True, vertical_align="top"):
         if not font:
             font = self.board.fonts["regular"]
         
         if code in self.elements:
             raise RuntimeError("The code has already been added")
         
-        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.04)
+        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.04, vertical_align=vertical_align)
         return self.add_element(code, hotspot, location, visible)
     
     def add_scrolling_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True):
@@ -104,8 +104,7 @@ class NoServices(Scene):
 
     def setup(self):
         self.add_text("title", align="center", font=self.board.fonts["bold"])
-        self.message_element = self.add_text("message", height=36, align="center", location=(0, 14))
-        self.services_element = self.add_text("noservices", text=self.text, align="center", location=(0, 22))
+        self.message_element = self.add_text("message", height=38, align="center", text=self.text, location=(0, 12), vertical_align="middle")
     
     def update_state(self, state):
         self.elements["title"].hotspot.update_text(state["name"])
@@ -157,15 +156,11 @@ class NoServices(Scene):
         if self.current_message == len(self.__messages):
             self.current_message = None
             interval = Config.get("settings.messages.frequency")
-            self.message_element.hide(self.board.viewport)
-            self.services_element.show(self.board.viewport)
-            self.services_element.hotspot.update_required = True
+            self.message_element.hotspot.update_text(self.text)
         
         else:
             interval = Config.get("settings.messages.interval")
             self.message_element.hotspot.update_text(self.__messages[self.current_message])
-            self.services_element.hide(self.board.viewport)
-            self.message_element.show(self.board.viewport)
         
         self.message_transition = timestamp + timedelta(seconds=interval)
  
