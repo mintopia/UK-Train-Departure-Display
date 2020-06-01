@@ -1,6 +1,6 @@
 import os
 from PIL import ImageFont
-from datetime import time as dtt, datetime
+from datetime import time as dtt, datetime, timedelta
 
 from trains.config import Config
 from trains.elements import *
@@ -30,7 +30,7 @@ class Board:
         self.brightness = Config.get("settings.brightness")
         self.normal_brightness = self.brightness
 
-        self.starting = datetime.now().timestamp()
+        self.finish_init = datetime.now() + timedelta(seconds=5)
 
         start = Config.get("settings.powersaving.start", "01:00")
         end = Config.get("settings.powersaving.end", "07:00")
@@ -114,15 +114,15 @@ class Board:
         # Tick Updates
         for scene in self.tick_updates:
             scene.update_tick(timestamp, tick)
+
+        if self.finish_init and timestamp < self.finish_init:
+            return
         
         # Only care if data has changed
         if self.__newdata != self.__data:
             self.__data = self.__newdata
 
-            if self.starting and self.starting + 2 >= timestamp.timestamp():
-                return
-
-            self.starting = None
+            self.finish_init = None
             
             self.initialising.hide()
             self.clock.show()
