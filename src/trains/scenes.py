@@ -1,7 +1,7 @@
 import trains.elements as elements
 from trains.config import Config
 
-from trains.utils import wordwrap, ordinal
+from trains.utils import wordwrap, ordinal, get_device_id, get_ip_address
 
 from datetime import datetime, timedelta
 from pprint import pprint
@@ -38,14 +38,14 @@ class Scene:
         if state:
             self.update_state(state)
     
-    def add_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True, vertical_align="top"):
+    def add_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True, vertical_align="top", spacing=2):
         if not font:
             font = self.board.fonts["regular"]
         
         if code in self.elements:
             raise RuntimeError("The code has already been added")
         
-        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.04, vertical_align=vertical_align)
+        hotspot = elements.StaticText(width, height, font, self.board.device.mode, text=text, align=align, interval=0.04, vertical_align=vertical_align, spacing=spacing)
         return self.add_element(code, hotspot, location, visible)
     
     def add_scrolling_text(self, code, width=256, height=12, font=None, location=(0, 0), align="left", text="", visible=True):
@@ -96,7 +96,15 @@ class Clock(Scene):
 
 class Initialising(Scene):
     def setup(self):
-        self.add_text("initialising", text="Departure board is initialising", align="center", location=(0, 22))
+        self.add_text("initialising", text="Departure board is initialising", align="center", location=(0, 0))
+        revision = "Unknown"
+        with open("../REVISION") as f:
+            revision = f.read()
+        
+        config_text = "Serial Number: {0}\n".format(get_device_id())
+        config_text += "Version: {0}\n".format(revision)
+        config_text += "IP Address: {0}".format(get_ip_address())
+        self.add_text("config", text=config_text, height=36, location=(0, 16), spacing=4)
 
 class NoServices(Scene):
     messages = []

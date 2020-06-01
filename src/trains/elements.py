@@ -61,7 +61,7 @@ class StaticText(snapshot):
 
         self.text_image = Image.new(self.mode, self.size)
 
-        size = self.font.getsize_multiline(self.text)
+        size = self.font.getsize_multiline(self.text, spacing=self.spacing)
 
         xpos = 0
         if self.align == "right":

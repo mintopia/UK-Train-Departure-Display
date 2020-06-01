@@ -7,11 +7,10 @@ apt install \
     python3-pip
 
 pip install -r requirements.txt
-cp ./departure-board.service /etc/systemd/service
-cp ./departure-board-startup.service /etc/systemd/service
+cp ./departure-board.service /etc/systemd/system
+cp ./departure-board-startup.service /etc/systemd/system
 
-systemctl reload
-systemctl install departure-board-startup
-systemctl install departure-board
-systemctl start depature-board-startup
+systemctl daemon-reload
+systemctl enable departure-board-startup
+systemctl enable departure-board
 systemctl start departure-board

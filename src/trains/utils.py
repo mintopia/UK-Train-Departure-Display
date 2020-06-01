@@ -1,13 +1,12 @@
 import math
+import socket
 
-from trains.config import Config
+from getmac import get_mac_address
 
 try:
     import cv2
     import numpy
 except ImportError:
-    if Config.get("debug.dummy", False):
-        print("Unable to load CV2 or numpy. Dummy mode will not render.")
     pass
 
 def wordwrap(font, width, input):
@@ -66,3 +65,12 @@ def display_image(name, image):
     np_image = cv2.resize(np_image, None, fx = 2, fy = 2, interpolation = cv2.INTER_AREA)
     cv2.imshow(name, np_image)
     cv2.waitKey(1)
+
+def get_ip_address():
+    return socket.gethostbyname(socket.gethostname())
+
+def get_device_id():
+    # We need a unique device ID for config, etc. Let's use MAC address.
+    mac = get_mac_address()
+    
+    return mac.replace(":", "")
