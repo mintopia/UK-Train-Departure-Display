@@ -99,7 +99,7 @@ class Initialising(Scene):
         self.add_text("initialising", text="Departure board is initialising", align="center", location=(0, 0))
         revision = "Unknown"
         with open("../REVISION") as f:
-            revision = f.read()
+            revision = f.read().strip()
         
         config_text = "Serial Number: {0}\n".format(get_device_id())
         config_text += "Version: {0}\n".format(revision)
