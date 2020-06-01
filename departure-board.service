@@ -1,7 +1,7 @@
 [Unit]
 Description=Train Departure Board
 After=network.target departure-board-startup.target
-Wants=departure-board-startup.target
+Requires=departure-board-startup.target
 
 [Service]
 ExecStart=/usr/bin/python3 -u main.py
