@@ -1,0 +1,13 @@
+[Unit]
+Description=Train Departure Board Startup and Update
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/departure-board/startup.sh
+WorkingDirectory=/opt/departure-board
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+[Unit]
+Description=Train Departure Board
+After=network.target departure-board-startup.target
+Wants=departure-board-startup.target
+
+[Service]
+ExecStart=/usr/bin/python3 -u main.py
+WorkingDirectory=/opt/departure-board/src
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
