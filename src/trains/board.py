@@ -30,6 +30,8 @@ class Board:
         self.brightness = Config.get("settings.brightness")
         self.normal_brightness = self.brightness
 
+        self.starting = datetime.now().timestamp()
+
         start = Config.get("settings.powersaving.start", "01:00")
         end = Config.get("settings.powersaving.end", "07:00")
         self.powersaving_brightness = Config.get("settings.powersaving.brightness", 0)
@@ -116,6 +118,12 @@ class Board:
         # Only care if data has changed
         if self.__newdata != self.__data:
             self.__data = self.__newdata
+
+            if self.starting and self.starting + 2 >= timestamp.timestamp():
+                return
+
+            self.starting = None
+            
             self.initialising.hide()
             self.clock.show()
 

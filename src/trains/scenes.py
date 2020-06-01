@@ -104,7 +104,7 @@ class Initialising(Scene):
         config_text = "Serial Number: {0}\n".format(get_device_id())
         config_text += "Version: {0}\n".format(revision)
         config_text += "IP Address: {0}".format(get_ip_address())
-        self.add_text("config", text=config_text, height=36, location=(0, 16), spacing=4)
+        self.add_text("config", text=config_text, height=48, location=(0, 16), spacing=5)
 
 class NoServices(Scene):
     messages = []
