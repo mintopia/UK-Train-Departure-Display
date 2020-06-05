@@ -218,6 +218,9 @@ class DepartureBoard(Scene):
                 text += " ({0})".format(stop["time"])
             stations.append(text)
         
+        if not stations:
+            return ""
+        
         last = stations.pop()
         calling_at = last
         if stations:
