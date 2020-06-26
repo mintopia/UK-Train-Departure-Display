@@ -27,9 +27,12 @@ def minute_timer():
     if not frequency:
         return
     timestamp = datetime.now()
-    state = api.get_cached_state(timestamp, frequency, as_dict=True)
     board.update_powersaving(timestamp)
-    board.update_state(state)
+    try:
+        state = api.get_cached_state(timestamp, frequency, as_dict=True)
+        board.update_state(state)
+    except ex:
+        pass
 
     global timer
     timer = threading.Timer(frequency + 1, minute_timer)
