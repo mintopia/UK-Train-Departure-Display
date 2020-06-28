@@ -31,7 +31,7 @@ def minute_timer():
     try:
         state = api.get_cached_state(timestamp, frequency, as_dict=True)
         board.update_state(state)
-    except ex:
+    except Exception:
         pass
 
     global timer
