@@ -106,7 +106,8 @@ class Api:
         departure.headcode = data["trainId"]
         departure.toc = data["toc"]
         departure.toc_name = lookup_data["toc"][data["toc"]]["tocname"]
-        departure.platform = data["location"]["forecast"]["plat"]["plat"]
+        if "plat" in data["location"]["forecast"]["plat"]:
+            departure.platform = data["location"]["forecast"]["plat"]["plat"]
         if "arrived" in data["location"]["forecast"]:
             departure.arrived = data["location"]["forecast"]["arrived"]
         if "length" in data["location"]:
