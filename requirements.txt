@@ -3,3 +3,4 @@ timeloop
 requests
 beautifulsoup4
 get-mac
+sentry-sdk

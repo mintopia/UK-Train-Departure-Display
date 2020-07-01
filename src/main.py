@@ -11,6 +11,10 @@ from trains.board import Board
 from trains.config import Config
 
 from time import sleep
+import sentry_sdk
+
+sentry_sdk.init("https://7edfb7e655ea43d7b9cc79b5e75030b9@o406991.ingest.sentry.io/5275445")
+
 
 board = Board()
 board.departure_board()
@@ -31,7 +35,8 @@ def minute_timer():
     try:
         state = api.get_cached_state(timestamp, frequency, as_dict=True)
         board.update_state(state)
-    except Exception:
+    except Exception as ex:
+        sentry_sdk.capture_exception(ex)
         pass
 
     global timer

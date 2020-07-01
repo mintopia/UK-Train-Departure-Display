@@ -75,6 +75,9 @@ class Api:
             departures = sorted(data["departures"], key=lambda departure: departure["location"]["timetable"]["time"])
         else:
             departures = []
+        
+        
+        cutoff = datetime.now() + timedelta(hours=Config.get("settings.cutoff", 8))
 
         state.departures = []
         for departure in departures:
@@ -92,6 +95,17 @@ class Api:
 
             # Hide ones that aren't calling at our destination
             if destination and not self.calls_at(data, departure, destination):
+                continue
+            
+            # Hide any after our cutoff
+            
+            # Calculate a python datetime
+            origin_ts = datetime.strptime(departure["ssd"] + " " + departure["origin"]["timetable"]["time"], "%Y-%m-%d %H:%M:%S")
+            depart_ts = datetime.strptime(departure["ssd"] + " " + departure["location"]["displaytime"], "%Y-%m-%d %H:%M:%S")
+            if origin_ts > depart_ts:
+                # We need to add a day to the datetime
+                depart_ts += timedelta(days=1)
+            if depart_ts >= cutoff:
                 continue
             
             state.departures.append(self.create_departure(data, departure))
@@ -133,7 +147,7 @@ class Api:
         departure.origin = self.get_location_from_tiploc(lookup_data, data["origin"]["tiploc"])
         departure.destination = self.get_location_from_tiploc(lookup_data, data["dest"]["tiploc"])
 
-        departure.scheduled = data["location"]["timetable"]["time"][:5]
+        departure.scheduled = data["location"]["displaytime"][:5]
         departure.actual = data["location"]["forecast"]["time"][:5]
         
         departure.stops = []
