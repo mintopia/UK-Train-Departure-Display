@@ -11,7 +11,7 @@ class Config:
 
     def __init__(self):
         uid = get_device_id()
-        url = "http://192.168.30.187/config/{0}.json".format(uid)
+        url = "https://orion.42m.co.uk/trains/config/{0}.json".format(uid)
         response = requests.get(url)
         self.config = response.json()
     

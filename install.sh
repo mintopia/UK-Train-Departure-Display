@@ -13,4 +13,5 @@ cp ./departure-board-startup.service /etc/systemd/system
 systemctl daemon-reload
 systemctl enable departure-board-startup
 systemctl enable departure-board
+systemctl daemon-reload
 systemctl start departure-board
