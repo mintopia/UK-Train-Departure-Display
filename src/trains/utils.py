@@ -42,6 +42,9 @@ def ordinal(number):
     return str(number) + suffix
 
 def align(font, text, width, align="center"):
+    if not text:
+      return 0
+    
     text_width = font.getsize_multiline(text)[0]
     if align == "center":
         return max(math.floor((width - text_width) / 2), 0)
