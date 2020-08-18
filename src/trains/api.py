@@ -180,6 +180,8 @@ class Api:
     
     def parse_messages(self, state, data):
         state.messages = []
+        if not data["messages"]:
+          return
         for message in data["messages"]:
             if not state.location.crs in message["station"]:
                 continue
