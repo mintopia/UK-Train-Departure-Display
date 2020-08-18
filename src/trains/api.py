@@ -180,6 +180,8 @@ class Api:
     
     def parse_messages(self, state, data):
         state.messages = []
+        if "messages" not in data:
+          return
         if not data["messages"]:
           return
         for message in data["messages"]:
